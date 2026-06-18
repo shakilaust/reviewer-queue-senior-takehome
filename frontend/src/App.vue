@@ -84,6 +84,20 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function timeAgo(value: string): string {
+  const diff = Date.now() - new Date(value).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return days === 1 ? 'Yesterday' : `${days}d ago`;
+  if (hours > 0) return `${hours}h ${mins % 60}m`;
+  return `${mins}m`;
+}
+
+function submittedTime(value: string): string {
+  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+}
+
 onMounted(loadItems);
 </script>
 
@@ -144,12 +158,19 @@ onMounted(loadItems);
           type="button"
           @click="selectedId = item.id"
         >
-          <span class="queue-title">{{ item.title }}</span>
+          <div class="queue-item-top">
+            <span class="queue-title">{{ item.title }}</span>
+            <span class="queue-time">{{ submittedTime(item.submitted_at) }}</span>
+          </div>
           <span class="badge-row">
             <span class="badge" :class="'risk-' + item.risk_level">{{ item.risk_level }}</span>
             <span class="badge" :class="item.customer_tier === 'priority' ? 'tier-priority' : 'tier-standard'">{{ item.customer_tier }}</span>
           </span>
-          <span class="queue-meta">{{ item.status }} · {{ item.assigned_reviewer ?? "unassigned" }}</span>
+          <div class="queue-age">
+            <span>{{ timeAgo(item.submitted_at) }}</span>
+            <span>·</span>
+            <span>{{ item.assigned_reviewer ?? 'Unassigned' }}</span>
+          </div>
         </button>
       </aside>
 
@@ -215,6 +236,27 @@ onMounted(loadItems);
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.queue-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 8px;
+}
+.queue-time {
+  font-size: 12px;
+  color: #8a99aa;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.queue-age {
+  display: flex;
+  gap: 4px;
+  font-size: 12px;
+  color: #8a99aa;
+  margin-top: 2px;
 }
 
 .queue-search { padding: 10px 12px 4px; }
