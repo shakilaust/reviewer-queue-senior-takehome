@@ -20,7 +20,7 @@ Fixed four workflow-correctness bugs in the backend and two in the frontend, add
 
 5. **All four action buttons rendered for every item** — a reviewer could click "Approve" on a terminal or unassigned item and receive an opaque error. The backend correctly rejected these, but the UI offered no indication of what was allowed. Fixed with a `v-if/v-else-if/v-else` block directly on `selectedItem.status` — no intermediate computed needed (see UX decisions).
 
-6. **Terminal items stayed in the queue after action** — approving, rejecting, or escalating an item left it in the left-hand queue list. The active queue is supposed to exclude terminal items. Fixed: after a terminal action the item is removed from `items` locally and focus advances to the next item in queue order.
+6. **Terminal items stayed in the queue after action** — approving, rejecting, or escalating an item left it in the left-hand queue list. The active queue is supposed to exclude terminal items. Fixed: after a terminal action the item is filtered out of `items` locally and `selectedId` is set to `items.value[0]?.id` so the reviewer lands on the highest-urgency remaining item.
 
 ## Product/UX decisions
 

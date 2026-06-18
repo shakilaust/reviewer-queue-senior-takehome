@@ -44,11 +44,8 @@ async function performAction(action: ReviewAction) {
     const updated = await applyReviewAction(selectedItem.value.id, action, currentReviewer);
 
     if (TERMINAL_STATUSES.has(updated.status)) {
-      // Remove from active queue and advance to the next item in the list.
-      const currentIndex = items.value.findIndex((i) => i.id === updated.id);
-      items.value = items.value.filter((i) => i.id !== updated.id);
-      const next = items.value[currentIndex] ?? items.value[currentIndex - 1] ?? null;
-      selectedId.value = next?.id ?? null;
+      items.value = items.value.filter((item) => item.id !== updated.id);
+      selectedId.value = items.value[0]?.id ?? null;
     } else {
       items.value = items.value.map((item) => (item.id === updated.id ? updated : item));
     }
