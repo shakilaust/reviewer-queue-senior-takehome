@@ -2,7 +2,7 @@
 
 ## Summary of changes
 
-Fixed four workflow-correctness bugs in the backend and two in the frontend, added colour-coded urgency badges and a context-aware action panel as UX improvements, and expanded the test suite from 2 smoke tests to 22 tests across two layers: direct Python function calls and full HTTP-level tests via `httpx.AsyncClient`.
+Fixed four workflow-correctness bugs in the backend and two in the frontend, then built out a substantially richer reviewer UI: sidebar stats, search, filter tabs, urgency badges, age/SLA indicators, a richer detail panel with SLA banner, related signals, notes thread, and a styled action bar. Expanded the test suite from 2 smoke tests to 22 tests across two layers.
 
 ## Bugs fixed
 
@@ -18,23 +18,33 @@ Fixed four workflow-correctness bugs in the backend and two in the frontend, add
 
 **Frontend (`frontend/src/App.vue`)**
 
-5. **All four action buttons rendered for every item** — a reviewer could click "Approve" on a terminal or unassigned item and receive an opaque error. The backend correctly rejected these, but the UI offered no indication of what was allowed. Fixed with a `v-if/v-else-if/v-else` block directly on `selectedItem.status` — no intermediate computed needed (see UX decisions).
+5. **All four action buttons rendered for every item** — a reviewer could click "Approve" on a terminal or unassigned item and receive an opaque error. Fixed with a `v-if/v-else-if/v-else` block directly on `selectedItem.status`.
 
-6. **Terminal items stayed in the queue after action** — approving, rejecting, or escalating an item left it in the left-hand queue list. The active queue is supposed to exclude terminal items. Fixed: after a terminal action the item is filtered out of `items` locally and `selectedId` is set to `items.value[0]?.id` so the reviewer lands on the highest-urgency remaining item.
+6. **Terminal items stayed in the queue after action** — approving, rejecting, or escalating an item left it in the left-hand queue list. Fixed: after a terminal action the item is filtered out of `items` locally and `selectedId` is set to `items.value[0]?.id` so the reviewer lands on the highest-urgency remaining item.
 
 ## Product/UX decisions
 
-**Colour-coded urgency badges in the sidebar** (`App.vue`): the plain-text `risk · tier` line in each queue row is replaced with two pill badges — red/amber/green for risk level, blue/grey for customer tier. Reviewers can scan the entire queue at a glance and immediately spot high-risk priority items without reading every row. This directly shortens the time to answer "what do I work on next?" The badge colours reuse the existing palette from `styles.css` (error red, info blue, neutral grey) so nothing looks out of place.
+**Reviewer avatar** — replaced the "Signed in as alex" text pill with a 36 px avatar circle showing initials (AX). Reduces header clutter while keeping identity visible.
 
-**Context-aware action buttons** (`App.vue`): instead of always showing all four buttons and letting the backend reject invalid calls, the action panel now shows only the actions that are valid for the current item's state:
+**Sidebar stats row** — three cards above the queue list show High risk count, Priority count, and Total open. Updates reactively as items are actioned. Gives a reviewer instant situational awareness without scrolling.
 
-- `unassigned` → only **Claim**
-- `in_review` → only **Approve**, **Reject**, **Escalate**
-- terminal → text notice "This item is `<status>`. No further actions are available."
+**Search and filter tabs** — a search input filters queue items by title in real time. Four tabs (All / Unassigned / Mine / Priority) let a reviewer narrow to their workload. Filters compose with search. Stats remain based on the full active queue so they always reflect true totals.
 
-This directly answers the reviewer's question "what can I do with this item right now?" without requiring them to try an action and interpret an error. The tradeoff is that the UI now encodes state-machine knowledge in two places (frontend and backend); I kept it acceptable by making the backend the authoritative source and the frontend purely presentational.
+**Queue item density** — each row now shows: title + submission time (top), risk and tier badges (middle), age + assignee (bottom). Replaces plain text with scannable information so a reviewer can triage without opening every item. `timeAgo()` converts ISO dates to human-readable age ("2d ago", "3h 15m").
 
-I chose this over leaving all buttons visible and disabling them because a disabled button with no explanation is nearly as confusing as an error message. The implementation uses `v-if/v-else-if/v-else` on `selectedItem.status` directly in the template — no `allowedActions` computed — keeping the logic flat and easy to read.
+**Colour-coded urgency badges** — red/amber/green for risk level, blue/grey for customer tier. Directly shortens the time to answer "what do I work on next?" Badge colours reuse the existing palette (error red, info blue, neutral grey).
+
+**Detail panel header** — replaced the plain title + status pill with a richer header: item ID (eyebrow), inline HIGH RISK and tier badges, Flag and Share icon buttons. The status pill is removed; status is communicated through the action bar instead.
+
+**SLA breach banner** — shown only for `high` risk + `unassigned` items. Red banner with a "Claim now" CTA makes the urgency unmissable and provides a one-click shortcut to the most time-critical action. Disappears automatically once the item is claimed.
+
+**"Assign to me" in facts grid** — the Assignee cell shows a small inline button for unassigned items. Provides a second entry point for claiming without requiring the reviewer to scroll to the action bar. Disappears once assigned.
+
+**Related signals section** — shown only for high-risk items. Two hardcoded signal rows (prototype — explained with `TAKEHOME` comment). In production these would come from a `/review-items/:id/signals` endpoint. Gives reviewers context about why an item is high-risk without leaving the tool.
+
+**Notes thread with avatars** — replaced the bare `notes_count` text with a threaded notes section: per-note avatars, author, timestamp, and text. Hardcoded for RV-1024 (prototype — `TAKEHOME` comment explains production shape). Other items show "No notes on this item yet." The `notes_count` from seed data is preserved in the section header.
+
+**Richer action bar** — plain text buttons replaced with styled `action-btn` variants. For `unassigned`: "✦ Claim & start review" (dark primary), "↑ Escalate", "✕ Dismiss". For `in_review`: Approve (primary), Reject (danger), Escalate (default). Visual hierarchy signals the recommended action.
 
 ## Tests added
 
@@ -74,26 +84,29 @@ All 22 tests pass (`pytest -v`).
 
 ## Known gaps
 
-- **No persistence** — ITEMS is an in-memory list; server restart resets all state. Acceptable per the brief, but means the `/dev/reset` endpoint is the only recovery path.
-- **No frontend tests** — the action-button branching logic is simple enough that I judged backend coverage sufficient for this timebox. A component test asserting which buttons render per status would be the obvious next addition.
+- **No persistence** — ITEMS is an in-memory list; server restart resets all state. Acceptable per the brief, but means `/dev/reset` is the only recovery path.
+- **Hardcoded notes and signals** — mock notes exist only for RV-1024; signals show for all high-risk items regardless of content. Both are clearly marked with `TAKEHOME` comments. The production shape (API endpoint + response field) is described in each comment.
+- **No frontend tests** — the action-button branching and filter logic are simple enough that I judged backend coverage sufficient for this timebox. Component tests asserting rendered buttons per status and filtered item counts would be the obvious next additions.
 - **Single reviewer identity** — `alex` is hardcoded as the brief specifies, so there is no ownership check (any reviewer can act on any item regardless of who claimed it).
-- **No optimistic rollback** — if the API call fails after an action, the frontend shows an error banner but does not undo any local state change. In practice no local state is mutated before the response arrives, so this is safe for the current implementation.
-- **Sort applies to the full list including `active_only=False`** — the spec only defines ordering for the active queue, but the sort now runs unconditionally. Not harmful, just untested for the terminal-items case.
+- **Escalate/Reject on unassigned** — the action bar for `unassigned` items includes Escalate and Dismiss buttons per the task spec, but the backend correctly returns 409 for these (only `claim` is valid on unassigned). The buttons are present as a UI prototype; a future tightening would either hide them or pre-validate client-side.
+- **No optimistic rollback** — if an API call fails, the frontend shows an error banner but no local state has been mutated (mutation happens after the response), so no rollback is needed in practice.
 
 ## Files changed and why
 
 | File | Why |
 |---|---|
-| `backend/app/main.py` | All four workflow-correctness fixes; `TERMINAL_STATUSES` added as a module-level constant after `ITEMS`; `RISK_ORDER` and `TIER_ORDER` defined as local variables inside `list_review_items` |
-| `frontend/src/App.vue` | Replaced static button block with `v-if/v-else-if/v-else` on `selectedItem.status`; `TERMINAL_STATUSES` is a `Set` for O(1) lookup; `performAction` removes terminal items from the queue list and jumps to `items[0]`; colour-coded urgency badges in sidebar; all styles in `<style scoped>` |
+| `backend/app/main.py` | All four workflow-correctness fixes; `TERMINAL_STATUSES` module-level constant; `RISK_ORDER`/`TIER_ORDER` locals inside `list_review_items` |
 | `backend/requirements.txt` | Added `httpx==0.28.1` for ASGI test client |
-| `backend/tests/test_smoke.py` | Expanded from 2 to 22 tests: 12 Python function-call tests + 8 HTTP-level tests via `httpx.AsyncClient`/`ASGITransport`; `reset_state` autouse fixture resets seed state before each test |
+| `backend/tests/test_smoke.py` | Expanded from 2 to 22 tests: 12 Python function-call + 8 HTTP-level; `reset_state` autouse fixture |
+| `frontend/src/App.vue` | All frontend changes: workflow guards, stats row, search/filter, urgency badges, time/age lines, detail header, SLA banner, assign-to-me, related signals, notes thread, richer action bar; all component styles in `<style scoped>` |
+| `frontend/src/styles.css` | Removed `.reviewer` pill rule and `.actions button` rules superseded by scoped styles |
 
 ## AI assistance used
 
 Claude Code (claude-sonnet-4-6) was used throughout:
 
-- **Bug identification**: I described the codebase and asked the assistant to identify all workflow-correctness violations against the README spec. It correctly identified all six bugs.
-- **Code generation**: the assistant wrote all edits to `main.py`, `App.vue`, and `test_smoke.py`. I reviewed each diff before accepting.
-- **Test assertion bug**: the ordering test initially used `a_key >= b_key` which failed because the date component is ascending. The assistant caught and fixed this when the test run output was shown.
-- **Review**: I read every changed line and cross-checked the state-machine logic against the README rules before accepting. The final logic and design decisions are mine.
+- **Bug identification**: asked the assistant to audit the codebase against the README spec. It correctly identified all six bugs.
+- **Code generation**: the assistant wrote all edits across all five changed files. I reviewed each diff before accepting.
+- **Test assertion bug**: the ordering test initially used `a_key >= b_key`; the assistant caught and fixed this when the test output was shown.
+- **Design tasks**: each UI task was specified precisely (exact HTML, exact CSS); the assistant applied the changes and I verified TypeScript compiled clean and the behaviour matched the spec.
+- **Review**: I read every changed line. The final logic, design decisions, and tradeoffs are mine.
