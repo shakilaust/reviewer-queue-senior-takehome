@@ -90,7 +90,10 @@ onMounted(loadItems);
           @click="selectedId = item.id"
         >
           <span class="queue-title">{{ item.title }}</span>
-          <span class="queue-meta">{{ item.risk_level }} risk · {{ item.customer_tier }}</span>
+          <span class="badge-row">
+            <span class="badge" :class="'risk-' + item.risk_level">{{ item.risk_level }}</span>
+            <span class="badge" :class="item.customer_tier === 'priority' ? 'tier-priority' : 'tier-standard'">{{ item.customer_tier }}</span>
+          </span>
           <span class="queue-meta">{{ item.status }} · {{ item.assigned_reviewer ?? "unassigned" }}</span>
         </button>
       </aside>
@@ -150,4 +153,22 @@ onMounted(loadItems);
   font-style: italic;
   margin-top: 28px;
 }
+
+/* TAKEHOME: Colour-coded badges let reviewers scan risk and tier at a glance
+   without reading every row — reduces time to answer "what do I work on next?" */
+.badge-row { display: flex; gap: 6px; align-items: center; }
+.badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.risk-high    { background: #ffe9e6; color: #8b1d0f; }
+.risk-medium  { background: #fff4e0; color: #7a4a00; }
+.risk-low     { background: #e8f4e8; color: #1a5c1a; }
+.tier-priority { background: #e8eef7; color: #1e55bd; }
+.tier-standard { background: #f0f1f3; color: #4a5568; }
 </style>

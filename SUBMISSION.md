@@ -24,6 +24,8 @@ Fixed four workflow-correctness bugs in the backend and two in the frontend, add
 
 ## Product/UX decisions
 
+**Colour-coded urgency badges in the sidebar** (`App.vue`): the plain-text `risk · tier` line in each queue row is replaced with two pill badges — red/amber/green for risk level, blue/grey for customer tier. Reviewers can scan the entire queue at a glance and immediately spot high-risk priority items without reading every row. This directly shortens the time to answer "what do I work on next?" The badge colours reuse the existing palette from `styles.css` (error red, info blue, neutral grey) so nothing looks out of place.
+
 **Context-aware action buttons** (`App.vue`): instead of always showing all four buttons and letting the backend reject invalid calls, the action panel now shows only the actions that are valid for the current item's state:
 
 - `unassigned` → only **Claim**
@@ -68,7 +70,7 @@ All 14 tests pass (`pytest -v`).
 | File | Why |
 |---|---|
 | `backend/app/main.py` | All four workflow-correctness fixes; `TERMINAL_STATUSES` added as a module-level constant after `ITEMS`; `RISK_ORDER` and `TIER_ORDER` defined as local variables inside `list_review_items` |
-| `frontend/src/App.vue` | Replaced static button block with `v-if/v-else-if/v-else` on `selectedItem.status`; `TERMINAL_STATUSES` is a `Set` for O(1) lookup; `performAction` removes terminal items from the queue list and advances selection; `.terminal-notice` style in `<style scoped>` |
+| `frontend/src/App.vue` | Replaced static button block with `v-if/v-else-if/v-else` on `selectedItem.status`; `TERMINAL_STATUSES` is a `Set` for O(1) lookup; `performAction` removes terminal items from the queue list and jumps to `items[0]`; colour-coded urgency badges in sidebar; all styles in `<style scoped>` |
 | `backend/tests/test_smoke.py` | Replaced 2 smoke tests with 14 behavior tests; added `autouse` reset fixture |
 
 ## AI assistance used
