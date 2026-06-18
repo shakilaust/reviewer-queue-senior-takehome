@@ -208,6 +208,12 @@ dd {
   opacity: 0.6;
 }
 
+.terminal-notice {
+  color: #66758a;
+  font-size: 14px;
+  margin: 0;
+}
+
 @media (max-width: 760px) {
   .page-shell {
     padding: 18px;

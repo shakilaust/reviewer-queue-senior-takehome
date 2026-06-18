@@ -4,7 +4,8 @@ import {
   applyReviewAction,
   fetchReviewItems,
   type ReviewAction,
-  type ReviewItem
+  type ReviewItem,
+  type ReviewStatus,
 } from "./api";
 
 const currentReviewer = "alex";
@@ -17,6 +18,16 @@ const pendingAction = ref<ReviewAction | null>(null);
 const selectedItem = computed(() =>
   items.value.find((item) => item.id === selectedId.value) ?? items.value[0] ?? null
 );
+
+const TERMINAL_STATUSES: ReviewStatus[] = ["approved", "rejected", "escalated"];
+
+const allowedActions = computed((): ReviewAction[] => {
+  const status = selectedItem.value?.status;
+  if (!status || TERMINAL_STATUSES.includes(status)) return [];
+  if (status === "unassigned") return ["claim"];
+  if (status === "in_review") return ["approve", "reject", "escalate"];
+  return [];
+});
 
 async function loadItems() {
   isLoading.value = true;
@@ -34,13 +45,23 @@ async function loadItems() {
 
 async function performAction(action: ReviewAction) {
   if (!selectedItem.value) return;
+  if (!allowedActions.value.includes(action)) return;
 
   pendingAction.value = action;
   errorMessage.value = null;
 
   try {
     const updated = await applyReviewAction(selectedItem.value.id, action, currentReviewer);
-    items.value = items.value.map((item) => (item.id === updated.id ? updated : item));
+
+    if (TERMINAL_STATUSES.includes(updated.status)) {
+      // Remove from active queue and advance to the next item in the list.
+      const currentIndex = items.value.findIndex((i) => i.id === updated.id);
+      items.value = items.value.filter((i) => i.id !== updated.id);
+      const next = items.value[currentIndex] ?? items.value[currentIndex - 1] ?? null;
+      selectedId.value = next?.id ?? null;
+    } else {
+      items.value = items.value.map((item) => (item.id === updated.id ? updated : item));
+    }
   } catch (error) {
     errorMessage.value = "That action could not be completed.";
   } finally {
@@ -119,18 +140,35 @@ onMounted(loadItems);
         <p class="notes">{{ selectedItem.notes_count }} notes on this item</p>
 
         <div class="actions" aria-label="Workflow actions">
-          <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('claim')">
-            Claim
-          </button>
-          <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('approve')">
-            Approve
-          </button>
-          <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('reject')">
-            Reject
-          </button>
-          <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('escalate')">
-            Escalate
-          </button>
+          <template v-if="allowedActions.length === 0">
+            <p class="terminal-notice">No further actions available — this item is {{ selectedItem.status }}.</p>
+          </template>
+          <template v-else>
+            <button
+              v-if="allowedActions.includes('claim')"
+              type="button"
+              :disabled="Boolean(pendingAction)"
+              @click="performAction('claim')"
+            >Claim</button>
+            <button
+              v-if="allowedActions.includes('approve')"
+              type="button"
+              :disabled="Boolean(pendingAction)"
+              @click="performAction('approve')"
+            >Approve</button>
+            <button
+              v-if="allowedActions.includes('reject')"
+              type="button"
+              :disabled="Boolean(pendingAction)"
+              @click="performAction('reject')"
+            >Reject</button>
+            <button
+              v-if="allowedActions.includes('escalate')"
+              type="button"
+              :disabled="Boolean(pendingAction)"
+              @click="performAction('escalate')"
+            >Escalate</button>
+          </template>
         </div>
       </section>
     </section>
