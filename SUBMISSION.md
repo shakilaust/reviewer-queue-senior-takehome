@@ -18,7 +18,7 @@ Fixed four workflow-correctness bugs in the backend and two in the frontend, add
 
 **Frontend (`frontend/src/App.vue`)**
 
-5. **All four action buttons rendered for every item** — a reviewer could click "Approve" on a terminal or unassigned item and receive an opaque error. The backend correctly rejected these, but the UI offered no indication of what was allowed. Fixed with a computed `allowedActions` property (see UX decisions).
+5. **All four action buttons rendered for every item** — a reviewer could click "Approve" on a terminal or unassigned item and receive an opaque error. The backend correctly rejected these, but the UI offered no indication of what was allowed. Fixed with a `v-if/v-else-if/v-else` block directly on `selectedItem.status` — no intermediate computed needed (see UX decisions).
 
 6. **Terminal items stayed in the queue after action** — approving, rejecting, or escalating an item left it in the left-hand queue list. The active queue is supposed to exclude terminal items. Fixed: after a terminal action the item is removed from `items` locally and focus advances to the next item in queue order.
 
@@ -28,11 +28,11 @@ Fixed four workflow-correctness bugs in the backend and two in the frontend, add
 
 - `unassigned` → only **Claim**
 - `in_review` → only **Approve**, **Reject**, **Escalate**
-- terminal → text notice "No further actions available — this item is `<status>`."
+- terminal → text notice "This item is `<status>`. No further actions are available."
 
 This directly answers the reviewer's question "what can I do with this item right now?" without requiring them to try an action and interpret an error. The tradeoff is that the UI now encodes state-machine knowledge in two places (frontend and backend); I kept it acceptable by making the backend the authoritative source and the frontend purely presentational.
 
-I chose this over leaving all buttons visible and disabling them because a disabled button with no explanation is nearly as confusing as an error message.
+I chose this over leaving all buttons visible and disabling them because a disabled button with no explanation is nearly as confusing as an error message. The implementation uses `v-if/v-else-if/v-else` on `selectedItem.status` directly in the template — no `allowedActions` computed — keeping the logic flat and easy to read.
 
 ## Tests added
 
@@ -58,7 +58,7 @@ All 14 tests pass (`pytest -v`).
 ## Known gaps
 
 - **No persistence** — ITEMS is an in-memory list; server restart resets all state. Acceptable per the brief, but means the `/dev/reset` endpoint is the only recovery path.
-- **No frontend tests** — the `allowedActions` logic is simple enough that I judged backend coverage sufficient for this timebox. A component test for the computed property would be the obvious next addition.
+- **No frontend tests** — the action-button branching logic is simple enough that I judged backend coverage sufficient for this timebox. A component test asserting which buttons render per status would be the obvious next addition.
 - **Single reviewer identity** — `alex` is hardcoded as the brief specifies, so there is no ownership check (any reviewer can act on any item regardless of who claimed it).
 - **No optimistic rollback** — if the API call fails after an action, the frontend shows an error banner but does not undo any local state change. In practice no local state is mutated before the response arrives, so this is safe for the current implementation.
 - **Sort applies to the full list including `active_only=False`** — the spec only defines ordering for the active queue, but the sort now runs unconditionally. Not harmful, just untested for the terminal-items case.
@@ -68,8 +68,7 @@ All 14 tests pass (`pytest -v`).
 | File | Why |
 |---|---|
 | `backend/app/main.py` | All four workflow-correctness fixes; `TERMINAL_STATUSES` added as a module-level constant after `ITEMS`; `RISK_ORDER` and `TIER_ORDER` defined as local variables inside `list_review_items` |
-| `frontend/src/App.vue` | Added `allowedActions` computed, updated `performAction` to remove terminal items from queue, replaced static button block with `v-if`-gated buttons |
-| `frontend/src/styles.css` | Added `.terminal-notice` style for the "no actions" message |
+| `frontend/src/App.vue` | Replaced static button block with `v-if/v-else-if/v-else` on `selectedItem.status`; `TERMINAL_STATUSES` is a `Set` for O(1) lookup; `performAction` removes terminal items from the queue list and advances selection; `.terminal-notice` style in `<style scoped>` |
 | `backend/tests/test_smoke.py` | Replaced 2 smoke tests with 14 behavior tests; added `autouse` reset fixture |
 
 ## AI assistance used
@@ -77,6 +76,6 @@ All 14 tests pass (`pytest -v`).
 Claude Code (claude-sonnet-4-6) was used throughout:
 
 - **Bug identification**: I described the codebase and asked the assistant to identify all workflow-correctness violations against the README spec. It correctly identified all six bugs.
-- **Code generation**: the assistant wrote all edits to `main.py`, `App.vue`, `styles.css`, and `test_smoke.py`. I reviewed each diff before accepting.
+- **Code generation**: the assistant wrote all edits to `main.py`, `App.vue`, and `test_smoke.py`. I reviewed each diff before accepting.
 - **Test assertion bug**: the ordering test initially used `a_key >= b_key` which failed because the date component is ascending. The assistant caught and fixed this when the test run output was shown.
 - **Review**: I read every changed line and cross-checked the state-machine logic against the README rules before accepting. The final logic and design decisions are mine.

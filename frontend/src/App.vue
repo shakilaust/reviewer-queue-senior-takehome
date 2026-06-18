@@ -5,7 +5,6 @@ import {
   fetchReviewItems,
   type ReviewAction,
   type ReviewItem,
-  type ReviewStatus,
 } from "./api";
 
 const currentReviewer = "alex";
@@ -19,15 +18,7 @@ const selectedItem = computed(() =>
   items.value.find((item) => item.id === selectedId.value) ?? items.value[0] ?? null
 );
 
-const TERMINAL_STATUSES: ReviewStatus[] = ["approved", "rejected", "escalated"];
-
-const allowedActions = computed((): ReviewAction[] => {
-  const status = selectedItem.value?.status;
-  if (!status || TERMINAL_STATUSES.includes(status)) return [];
-  if (status === "unassigned") return ["claim"];
-  if (status === "in_review") return ["approve", "reject", "escalate"];
-  return [];
-});
+const TERMINAL_STATUSES = new Set(["approved", "rejected", "escalated"]);
 
 async function loadItems() {
   isLoading.value = true;
@@ -45,7 +36,6 @@ async function loadItems() {
 
 async function performAction(action: ReviewAction) {
   if (!selectedItem.value) return;
-  if (!allowedActions.value.includes(action)) return;
 
   pendingAction.value = action;
   errorMessage.value = null;
@@ -53,7 +43,7 @@ async function performAction(action: ReviewAction) {
   try {
     const updated = await applyReviewAction(selectedItem.value.id, action, currentReviewer);
 
-    if (TERMINAL_STATUSES.includes(updated.status)) {
+    if (TERMINAL_STATUSES.has(updated.status)) {
       // Remove from active queue and advance to the next item in the list.
       const currentIndex = items.value.findIndex((i) => i.id === updated.id);
       items.value = items.value.filter((i) => i.id !== updated.id);
@@ -140,37 +130,27 @@ onMounted(loadItems);
         <p class="notes">{{ selectedItem.notes_count }} notes on this item</p>
 
         <div class="actions" aria-label="Workflow actions">
-          <template v-if="allowedActions.length === 0">
-            <p class="terminal-notice">No further actions available — this item is {{ selectedItem.status }}.</p>
+          <template v-if="selectedItem.status === 'unassigned'">
+            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('claim')">Claim</button>
+          </template>
+          <template v-else-if="selectedItem.status === 'in_review'">
+            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('approve')">Approve</button>
+            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('reject')">Reject</button>
+            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('escalate')">Escalate</button>
           </template>
           <template v-else>
-            <button
-              v-if="allowedActions.includes('claim')"
-              type="button"
-              :disabled="Boolean(pendingAction)"
-              @click="performAction('claim')"
-            >Claim</button>
-            <button
-              v-if="allowedActions.includes('approve')"
-              type="button"
-              :disabled="Boolean(pendingAction)"
-              @click="performAction('approve')"
-            >Approve</button>
-            <button
-              v-if="allowedActions.includes('reject')"
-              type="button"
-              :disabled="Boolean(pendingAction)"
-              @click="performAction('reject')"
-            >Reject</button>
-            <button
-              v-if="allowedActions.includes('escalate')"
-              type="button"
-              :disabled="Boolean(pendingAction)"
-              @click="performAction('escalate')"
-            >Escalate</button>
+            <p class="terminal-notice">This item is {{ selectedItem.status }}. No further actions are available.</p>
           </template>
         </div>
       </section>
     </section>
   </main>
 </template>
+
+<style scoped>
+.terminal-notice {
+  color: #66758a;
+  font-style: italic;
+  margin-top: 28px;
+}
+</style>
