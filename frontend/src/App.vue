@@ -226,7 +226,18 @@ onMounted(loadItems);
           </div>
           <div>
             <dt>Assignee</dt>
-            <dd>{{ selectedItem.assigned_reviewer ?? "None" }}</dd>
+            <dd class="assignee-cell">
+              <span>{{ selectedItem.assigned_reviewer ?? 'Unassigned' }}</span>
+              <button
+                v-if="selectedItem.status === 'unassigned'"
+                type="button"
+                class="assign-btn"
+                :disabled="Boolean(pendingAction)"
+                @click="performAction('claim')"
+              >
+                Assign to me
+              </button>
+            </dd>
           </div>
         </dl>
 
@@ -265,6 +276,24 @@ onMounted(loadItems);
   justify-content: center;
   flex-shrink: 0;
 }
+
+.assignee-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.assign-btn {
+  border: 1px solid #4c7bd9;
+  border-radius: 5px;
+  background: #fff;
+  color: #1e55bd;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.assign-btn:hover:not(:disabled) { background: #eef3fb; }
 
 .sla-banner {
   display: flex;
