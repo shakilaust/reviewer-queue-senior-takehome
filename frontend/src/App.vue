@@ -290,12 +290,20 @@ onMounted(loadItems);
 
         <div class="actions" aria-label="Workflow actions">
           <template v-if="selectedItem.status === 'unassigned'">
-            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('claim')">Claim</button>
+            <button type="button" class="action-btn primary" :disabled="Boolean(pendingAction)" @click="performAction('claim')">
+              ✦ Claim &amp; start review
+            </button>
+            <button type="button" class="action-btn" :disabled="Boolean(pendingAction)" @click="performAction('escalate')">
+              ↑ Escalate
+            </button>
+            <button type="button" class="action-btn danger" :disabled="Boolean(pendingAction)" @click="performAction('reject')">
+              ✕ Dismiss
+            </button>
           </template>
           <template v-else-if="selectedItem.status === 'in_review'">
-            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('approve')">Approve</button>
-            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('reject')">Reject</button>
-            <button type="button" :disabled="Boolean(pendingAction)" @click="performAction('escalate')">Escalate</button>
+            <button type="button" class="action-btn primary" :disabled="Boolean(pendingAction)" @click="performAction('approve')">Approve</button>
+            <button type="button" class="action-btn danger" :disabled="Boolean(pendingAction)" @click="performAction('reject')">Reject</button>
+            <button type="button" class="action-btn" :disabled="Boolean(pendingAction)" @click="performAction('escalate')">Escalate</button>
           </template>
           <template v-else>
             <p class="terminal-notice">This item is {{ selectedItem.status }}. No further actions are available.</p>
@@ -307,6 +315,30 @@ onMounted(loadItems);
 </template>
 
 <style scoped>
+.action-btn {
+  border: 1px solid #d8dee9;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #1d2433;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.action-btn:hover:not(:disabled) { background: #f0f4fb; border-color: #4c7bd9; }
+.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.action-btn.primary {
+  background: #1d2433;
+  color: #fff;
+  border-color: #1d2433;
+}
+.action-btn.primary:hover:not(:disabled) { background: #2c384a; }
+.action-btn.danger { color: #8b1d0f; border-color: #f5c2be; }
+.action-btn.danger:hover:not(:disabled) { background: #fff4f3; }
+
 .reviewer-avatar {
   width: 36px;
   height: 36px;
