@@ -57,16 +57,10 @@ h2 {
   text-transform: uppercase;
 }
 
-.reviewer,
 .loading,
 .error-banner {
   border-radius: 6px;
   padding: 10px 12px;
-}
-
-.reviewer {
-  background: #e8eef7;
-  color: #28364a;
 }
 
 .error-banner {

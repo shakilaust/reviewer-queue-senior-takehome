@@ -73,7 +73,7 @@ onMounted(loadItems);
         <p class="eyebrow">Reviewer workspace</p>
         <h1>Active queue</h1>
       </div>
-      <div class="reviewer">Signed in as {{ currentReviewer }}</div>
+      <div class="reviewer-avatar" aria-label="Signed in as alex">AX</div>
     </header>
 
     <p v-if="errorMessage" class="error-banner">{{ errorMessage }}</p>
@@ -148,6 +148,20 @@ onMounted(loadItems);
 </template>
 
 <style scoped>
+.reviewer-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #c7d9f5;
+  color: #1e3a6e;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .terminal-notice {
   color: #66758a;
   font-style: italic;
