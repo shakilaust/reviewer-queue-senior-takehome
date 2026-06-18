@@ -241,6 +241,22 @@ onMounted(loadItems);
           </div>
         </dl>
 
+        <!-- TAKEHOME: Related signals are hardcoded as a UI prototype.
+             In production these would come from a signals field in the API response. -->
+        <div v-if="selectedItem.risk_level === 'high'" class="signals-section">
+          <h3 class="section-label">Related signals</h3>
+          <div class="signal-row">
+            <span class="signal-icon">↺</span>
+            <span class="signal-text">2 prior limit change requests (last 90 days)</span>
+            <span class="signal-badge elevated">ELEVATED</span>
+          </div>
+          <div class="signal-row">
+            <span class="signal-icon">⊕</span>
+            <span class="signal-text">Account open &lt; 6 months</span>
+            <span class="signal-badge risk">RISK</span>
+          </div>
+        </div>
+
         <p class="summary">{{ selectedItem.summary }}</p>
         <p class="notes">{{ selectedItem.notes_count }} notes on this item</p>
 
@@ -276,6 +292,37 @@ onMounted(loadItems);
   justify-content: center;
   flex-shrink: 0;
 }
+
+.signals-section { margin: 20px 0; }
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #66758a;
+  margin-bottom: 10px;
+}
+.signal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #eef1f6;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #2c384a;
+}
+.signal-icon { color: #8a99aa; font-size: 15px; }
+.signal-text { flex: 1; }
+.signal-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.signal-badge.elevated { background: #fff4e0; color: #7a4a00; }
+.signal-badge.risk     { background: #ffe9e6; color: #8b1d0f; }
 
 .assignee-cell {
   display: flex;
