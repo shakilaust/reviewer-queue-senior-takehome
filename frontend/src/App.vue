@@ -98,6 +98,19 @@ function submittedTime(value: string): string {
   return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
+// TAKEHOME: Notes are hardcoded per item ID as a UI prototype.
+// In production, notes would be fetched from a /review-items/:id/notes endpoint.
+const MOCK_NOTES: Record<string, { author: string; initials: string; time: string; text: string }[]> = {
+  'RV-1024': [
+    { author: 'alex', initials: 'AX', time: '2 Apr, 09:40', text: 'Flagged for senior review — transfer destination is a new country for this account.' },
+    { author: 'sarah', initials: 'SR', time: '2 Apr, 10:02', text: 'Customer verified via phone. Awaiting compliance sign-off.' },
+  ],
+};
+
+const itemNotes = computed(() =>
+  selectedItem.value ? (MOCK_NOTES[selectedItem.value.id] ?? []) : []
+);
+
 onMounted(loadItems);
 </script>
 
@@ -258,7 +271,22 @@ onMounted(loadItems);
         </div>
 
         <p class="summary">{{ selectedItem.summary }}</p>
-        <p class="notes">{{ selectedItem.notes_count }} notes on this item</p>
+        <div class="notes-section">
+          <div class="notes-header">
+            <h3 class="section-label">Notes ({{ selectedItem.notes_count }})</h3>
+            <button type="button" class="add-note-btn">+ Add note</button>
+          </div>
+          <div v-if="itemNotes.length" class="notes-list">
+            <div v-for="note in itemNotes" :key="note.time" class="note-row">
+              <div class="note-avatar">{{ note.initials }}</div>
+              <div class="note-body">
+                <div class="note-meta">{{ note.author }} · {{ note.time }}</div>
+                <div class="note-text">{{ note.text }}</div>
+              </div>
+            </div>
+          </div>
+          <p v-else class="no-notes">No notes on this item yet.</p>
+        </div>
 
         <div class="actions" aria-label="Workflow actions">
           <template v-if="selectedItem.status === 'unassigned'">
@@ -292,6 +320,45 @@ onMounted(loadItems);
   justify-content: center;
   flex-shrink: 0;
 }
+
+.notes-section { margin-top: 20px; }
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.add-note-btn {
+  border: 1px solid #d8dee9;
+  border-radius: 6px;
+  background: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #3a4a5c;
+}
+.note-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #eef1f6;
+}
+.note-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #c7d9f5;
+  color: #1e3a6e;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.note-meta { font-size: 12px; color: #8a99aa; margin-bottom: 3px; }
+.note-text { font-size: 13px; color: #2c384a; line-height: 1.5; }
+.no-notes { font-size: 13px; color: #8a99aa; }
 
 .signals-section { margin: 20px 0; }
 .section-label {
