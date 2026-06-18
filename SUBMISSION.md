@@ -2,7 +2,7 @@
 
 ## Summary of changes
 
-Fixed four workflow-correctness bugs in the backend and two in the frontend, added a context-aware action panel as a UX improvement, and expanded the test suite from 2 smoke tests to 14 targeted behavior tests.
+Fixed four workflow-correctness bugs in the backend and two in the frontend, added colour-coded urgency badges and a context-aware action panel as UX improvements, and expanded the test suite from 2 smoke tests to 22 tests across two layers: direct Python function calls and full HTTP-level tests via `httpx.AsyncClient`.
 
 ## Bugs fixed
 
@@ -38,7 +38,9 @@ I chose this over leaving all buttons visible and disabling them because a disab
 
 ## Tests added
 
-All 12 new tests are in `backend/tests/test_smoke.py`. Each test resets seed data via `reset_items()` using an `autouse` fixture so tests are independent.
+All 20 new tests are in `backend/tests/test_smoke.py`. The `reset_state` autouse fixture calls `asyncio.run(reset_items())` before each test so they are fully independent.
+
+**Python function-call layer** (12 tests — call `apply_action`, `list_review_items` directly):
 
 | Test | What it covers |
 |---|---|
@@ -55,7 +57,20 @@ All 12 new tests are in `backend/tests/test_smoke.py`. Each test resets seed dat
 | `test_terminal_item_blocks_all_further_actions` | 409 for approve/reject/escalate on all three terminal statuses |
 | `test_full_claim_then_approve_flow` | End-to-end: claim then approve, reviewer preserved |
 
-All 14 tests pass (`pytest -v`).
+**HTTP layer** (8 tests — `httpx.AsyncClient` with `ASGITransport`, exercises routing, request parsing, and status codes end-to-end):
+
+| Test | What it covers |
+|---|---|
+| `test_claim_unassigned_succeeds` | POST claim → 200, `in_review`, reviewer `alex` |
+| `test_claim_in_review_returns_409` | Claim twice → second POST returns 409 |
+| `test_claim_terminal_returns_409` | Claim already-approved RV-1029 → 409 |
+| `test_approve_in_review_succeeds` | Claim then approve → 200, `approved` |
+| `test_approve_unassigned_returns_409` | Approve without claiming → 409 |
+| `test_approve_already_approved_returns_409` | Claim, approve, approve again → 409 |
+| `test_queue_excludes_terminal_items` | GET `/review-items` → RV-1029, RV-1033, RV-1034 absent |
+| `test_queue_sorts_high_risk_first` | GET `/review-items` → first item is `high`, no `high` appears after `medium`/`low` |
+
+All 22 tests pass (`pytest -v`).
 
 ## Known gaps
 
@@ -71,7 +86,8 @@ All 14 tests pass (`pytest -v`).
 |---|---|
 | `backend/app/main.py` | All four workflow-correctness fixes; `TERMINAL_STATUSES` added as a module-level constant after `ITEMS`; `RISK_ORDER` and `TIER_ORDER` defined as local variables inside `list_review_items` |
 | `frontend/src/App.vue` | Replaced static button block with `v-if/v-else-if/v-else` on `selectedItem.status`; `TERMINAL_STATUSES` is a `Set` for O(1) lookup; `performAction` removes terminal items from the queue list and jumps to `items[0]`; colour-coded urgency badges in sidebar; all styles in `<style scoped>` |
-| `backend/tests/test_smoke.py` | Replaced 2 smoke tests with 14 behavior tests; added `autouse` reset fixture |
+| `backend/requirements.txt` | Added `httpx==0.28.1` for ASGI test client |
+| `backend/tests/test_smoke.py` | Expanded from 2 to 22 tests: 12 Python function-call tests + 8 HTTP-level tests via `httpx.AsyncClient`/`ASGITransport`; `reset_state` autouse fixture resets seed state before each test |
 
 ## AI assistance used
 

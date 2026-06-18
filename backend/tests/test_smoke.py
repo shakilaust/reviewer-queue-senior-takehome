@@ -1,9 +1,10 @@
 import asyncio
 
 import pytest
+from httpx import AsyncClient, ASGITransport
 from fastapi import HTTPException
 
-from app.main import ActionRequest, apply_action, health, list_review_items, reset_items
+from app.main import ActionRequest, apply_action, app, health, list_review_items, reset_items
 
 
 def run_async(coro):
@@ -11,10 +12,8 @@ def run_async(coro):
 
 
 @pytest.fixture(autouse=True)
-def reset():
-    run_async(reset_items())
-    yield
-    run_async(reset_items())
+def reset_state():
+    asyncio.run(reset_items())
 
 
 def test_health_check() -> None:
@@ -121,3 +120,88 @@ def test_full_claim_then_approve_flow() -> None:
     response = run_async(apply_action("RV-1024", ActionRequest(action="approve")))
     assert response["item"]["status"] == "approved"
     assert response["item"]["assigned_reviewer"] == "alex"
+
+
+# --- HTTP-level tests (httpx AsyncClient) ---
+
+def test_claim_unassigned_succeeds() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            return await client.post("/review-items/RV-1024/actions", json={"action": "claim", "reviewer": "alex"})
+    response = asyncio.run(call())
+    assert response.status_code == 200
+    data = response.json()["item"]
+    assert data["status"] == "in_review"
+    assert data["assigned_reviewer"] == "alex"
+
+
+def test_claim_in_review_returns_409() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/review-items/RV-1024/actions", json={"action": "claim", "reviewer": "alex"})
+            return await client.post("/review-items/RV-1024/actions", json={"action": "claim", "reviewer": "alex"})
+    response = asyncio.run(call())
+    assert response.status_code == 409
+
+
+def test_claim_terminal_returns_409() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            return await client.post("/review-items/RV-1029/actions", json={"action": "claim", "reviewer": "alex"})
+    response = asyncio.run(call())
+    assert response.status_code == 409
+
+
+def test_approve_in_review_succeeds() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/review-items/RV-1024/actions", json={"action": "claim", "reviewer": "alex"})
+            return await client.post("/review-items/RV-1024/actions", json={"action": "approve", "reviewer": "alex"})
+    response = asyncio.run(call())
+    assert response.status_code == 200
+    assert response.json()["item"]["status"] == "approved"
+
+
+def test_approve_unassigned_returns_409() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            return await client.post("/review-items/RV-1024/actions", json={"action": "approve", "reviewer": "alex"})
+    response = asyncio.run(call())
+    assert response.status_code == 409
+
+
+def test_approve_already_approved_returns_409() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/review-items/RV-1024/actions", json={"action": "claim", "reviewer": "alex"})
+            await client.post("/review-items/RV-1024/actions", json={"action": "approve", "reviewer": "alex"})
+            return await client.post("/review-items/RV-1024/actions", json={"action": "approve", "reviewer": "alex"})
+    response = asyncio.run(call())
+    assert response.status_code == 409
+
+
+def test_queue_excludes_terminal_items() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            return await client.get("/review-items")
+    response = asyncio.run(call())
+    assert response.status_code == 200
+    ids = {item["id"] for item in response.json()["items"]}
+    assert "RV-1029" not in ids
+    assert "RV-1033" not in ids
+    assert "RV-1034" not in ids
+
+
+def test_queue_sorts_high_risk_first() -> None:
+    async def call():
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            return await client.get("/review-items")
+    response = asyncio.run(call())
+    items = response.json()["items"]
+    assert items[0]["risk_level"] == "high"
+    seen_non_high = False
+    for item in items:
+        if item["risk_level"] != "high":
+            seen_non_high = True
+        if seen_non_high:
+            assert item["risk_level"] != "high", f"High-risk item {item['id']} appeared after a non-high item"
