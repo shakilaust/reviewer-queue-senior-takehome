@@ -46,15 +46,15 @@ def test_queue_ordered_by_risk_then_tier_then_age() -> None:
     response = run_async(list_review_items(active_only=True))
     items = response["items"]
 
-    RISK = {"high": 2, "medium": 1, "low": 0}
-    TIER = {"priority": 1, "standard": 0}
+    RISK_ORDER = {"high": 0, "medium": 1, "low": 2}
+    TIER_ORDER = {"priority": 0, "standard": 1}
 
-    # Sort key used by the backend: (-risk, -tier, submitted_at asc).
+    # Sort key used by the backend: (risk asc 0=high, tier asc 0=priority, submitted_at asc).
     # Consecutive items must be non-decreasing in that key.
     for i in range(len(items) - 1):
         a, b = items[i], items[i + 1]
-        a_key = (-RISK[a["risk_level"]], -TIER[a["customer_tier"]], a["submitted_at"])
-        b_key = (-RISK[b["risk_level"]], -TIER[b["customer_tier"]], b["submitted_at"])
+        a_key = (RISK_ORDER[a["risk_level"]], TIER_ORDER[a["customer_tier"]], a["submitted_at"])
+        b_key = (RISK_ORDER[b["risk_level"]], TIER_ORDER[b["customer_tier"]], b["submitted_at"])
         assert a_key <= b_key, f"Item {a['id']} ranked above {b['id']} but has lower urgency"
 
 

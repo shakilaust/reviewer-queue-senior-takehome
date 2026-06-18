@@ -14,10 +14,6 @@ DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "review_items.json"
 
 ReviewAction = Literal["claim", "approve", "reject", "escalate"]
 
-TERMINAL_STATUSES = {"approved", "rejected", "escalated"}
-RISK_ORDER = {"high": 2, "medium": 1, "low": 0}
-TIER_ORDER = {"priority": 1, "standard": 0}
-
 
 class ActionRequest(BaseModel):
     action: ReviewAction
@@ -41,6 +37,7 @@ def load_seed_items() -> list[dict]:
 
 
 ITEMS = load_seed_items()
+TERMINAL_STATUSES = {"approved", "rejected", "escalated"}
 
 
 @app.get("/health")
@@ -62,11 +59,13 @@ async def list_review_items(active_only: bool = True) -> dict:
     if active_only:
         items = [item for item in items if item["status"] not in TERMINAL_STATUSES]
 
+    RISK_ORDER = {"high": 0, "medium": 1, "low": 2}
+    TIER_ORDER = {"priority": 0, "standard": 1}
     # TAKEHOME: Sort by urgency: high risk > medium > low, priority tier > standard,
     # then oldest first within the same bucket so nothing ages out unnoticed.
     items.sort(key=lambda item: (
-        -RISK_ORDER[item["risk_level"]],
-        -TIER_ORDER[item["customer_tier"]],
+        RISK_ORDER[item["risk_level"]],
+        TIER_ORDER[item["customer_tier"]],
         item["submitted_at"],
     ))
     return {"items": items}

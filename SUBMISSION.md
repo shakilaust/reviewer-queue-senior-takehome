@@ -10,7 +10,7 @@ Fixed four workflow-correctness bugs in the backend and two in the frontend, add
 
 1. **Active queue included terminal items** — `list_review_items` filtered out only `approved`, leaving `rejected` and `escalated` items in the active queue. Fixed to exclude all three terminal statuses.
 
-2. **Queue sort order was wrong** — items were sorted newest-first by `submitted_at` only, ignoring risk level and customer tier entirely. Fixed to sort by `(-risk_level, -customer_tier, submitted_at)` so high-urgency items surface first and older items break ties within the same bucket.
+2. **Queue sort order was wrong** — items were sorted newest-first by `submitted_at` only, ignoring risk level and customer tier entirely. Fixed with a tuple sort key `(RISK_ORDER, TIER_ORDER, submitted_at)` where `RISK_ORDER = {"high": 0, "medium": 1, "low": 2}` and `TIER_ORDER = {"priority": 0, "standard": 1}` — lower value sorts first, so high-risk priority items surface at the top and older items break ties within the same bucket.
 
 3. **`claim` allowed re-claiming in-review items** — the guard only blocked terminal statuses, so an `in_review` item could be re-claimed (and its `assigned_reviewer` overwritten). Fixed: claim now requires `status == "unassigned"`.
 
@@ -67,7 +67,7 @@ All 14 tests pass (`pytest -v`).
 
 | File | Why |
 |---|---|
-| `backend/app/main.py` | All four workflow-correctness fixes; added `TERMINAL_STATUSES`, `RISK_ORDER`, `TIER_ORDER` constants at module level so the logic is easy to find and test |
+| `backend/app/main.py` | All four workflow-correctness fixes; `TERMINAL_STATUSES` added as a module-level constant after `ITEMS`; `RISK_ORDER` and `TIER_ORDER` defined as local variables inside `list_review_items` |
 | `frontend/src/App.vue` | Added `allowedActions` computed, updated `performAction` to remove terminal items from queue, replaced static button block with `v-if`-gated buttons |
 | `frontend/src/styles.css` | Added `.terminal-notice` style for the "no actions" message |
 | `backend/tests/test_smoke.py` | Replaced 2 smoke tests with 14 behavior tests; added `autouse` reset fixture |
