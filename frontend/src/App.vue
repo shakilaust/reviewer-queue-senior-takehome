@@ -192,6 +192,25 @@ onMounted(loadItems);
           <h2>{{ selectedItem.title }}</h2>
         </div>
 
+        <div
+          v-if="selectedItem.risk_level === 'high' && selectedItem.status === 'unassigned'"
+          class="sla-banner"
+          role="alert"
+        >
+          <div class="sla-banner-text">
+            <strong>SLA breach risk</strong>
+            <span>Claim this item now to prevent escalation.</span>
+          </div>
+          <button
+            type="button"
+            class="sla-claim-btn"
+            :disabled="Boolean(pendingAction)"
+            @click="performAction('claim')"
+          >
+            Claim now
+          </button>
+        </div>
+
         <dl class="facts">
           <div>
             <dt>Submitted</dt>
@@ -246,6 +265,40 @@ onMounted(loadItems);
   justify-content: center;
   flex-shrink: 0;
 }
+
+.sla-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff4f3;
+  border: 1px solid #f5c2be;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+.sla-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: #7a1f1a;
+}
+.sla-banner-text strong { font-size: 14px; }
+.sla-claim-btn {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sla-claim-btn:hover:not(:disabled) { background: #a93226; }
+.sla-claim-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .detail-header-top {
   display: flex;
