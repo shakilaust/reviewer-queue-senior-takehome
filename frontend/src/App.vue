@@ -26,6 +26,21 @@ const stats = computed(() => ({
   total: items.value.length,
 }));
 
+const searchQuery = ref('');
+const activeFilter = ref<'all' | 'unassigned' | 'mine' | 'priority'>('all');
+
+const filteredItems = computed(() => {
+  let result = items.value;
+  if (activeFilter.value === 'unassigned') result = result.filter(i => i.status === 'unassigned');
+  if (activeFilter.value === 'mine') result = result.filter(i => i.assigned_reviewer === currentReviewer);
+  if (activeFilter.value === 'priority') result = result.filter(i => i.customer_tier === 'priority');
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase();
+    result = result.filter(i => i.title.toLowerCase().includes(q));
+  }
+  return result;
+});
+
 async function loadItems() {
   isLoading.value = true;
   errorMessage.value = null;
@@ -101,8 +116,28 @@ onMounted(loadItems);
             <span class="stat-label">Total open</span>
           </div>
         </div>
+        <div class="queue-search">
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="Search queue..."
+            class="search-input"
+            aria-label="Search queue"
+          />
+        </div>
+        <div class="filter-tabs" role="tablist">
+          <button
+            v-for="tab in (['all','unassigned','mine','priority'] as const)"
+            :key="tab"
+            class="filter-tab"
+            :class="{ active: activeFilter === tab }"
+            role="tab"
+            :aria-selected="activeFilter === tab"
+            @click="activeFilter = tab"
+          >{{ tab.charAt(0).toUpperCase() + tab.slice(1) }}</button>
+        </div>
         <button
-          v-for="item in items"
+          v-for="item in filteredItems"
           :key="item.id"
           class="queue-item"
           :class="{ selected: item.id === selectedItem?.id }"
@@ -180,6 +215,38 @@ onMounted(loadItems);
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.queue-search { padding: 10px 12px 4px; }
+.search-input {
+  width: 100%;
+  border: 1px solid #d8dee9;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #f5f7fb;
+  color: #162033;
+}
+.search-input:focus { outline: 2px solid #4c7bd9; border-color: transparent; }
+.filter-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px 10px;
+  border-bottom: 1px solid #eef1f6;
+}
+.filter-tab {
+  border: 1px solid #d8dee9;
+  border-radius: 999px;
+  background: #fff;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #5c6b7e;
+}
+.filter-tab.active {
+  background: #162033;
+  color: #fff;
+  border-color: #162033;
 }
 
 .queue-stats {
