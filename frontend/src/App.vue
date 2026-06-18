@@ -176,11 +176,20 @@ onMounted(loadItems);
 
       <section v-if="selectedItem" class="detail-panel">
         <div class="detail-header">
-          <div>
-            <p class="eyebrow">{{ selectedItem.id }}</p>
-            <h2>{{ selectedItem.title }}</h2>
+          <div class="detail-header-top">
+            <span class="eyebrow">{{ selectedItem.id }}</span>
+            <div class="detail-header-actions">
+              <span class="badge risk-high" v-if="selectedItem.risk_level === 'high'">
+                ⚠ HIGH RISK
+              </span>
+              <span class="badge" :class="selectedItem.customer_tier === 'priority' ? 'tier-priority' : 'tier-standard'">
+                {{ selectedItem.customer_tier.toUpperCase() }}
+              </span>
+              <button class="icon-btn" aria-label="Flag item">⚑ Flag</button>
+              <button class="icon-btn" aria-label="Share item">↗ Share</button>
+            </div>
           </div>
-          <span class="status-pill">{{ selectedItem.status }}</span>
+          <h2>{{ selectedItem.title }}</h2>
         </div>
 
         <dl class="facts">
@@ -237,6 +246,29 @@ onMounted(loadItems);
   justify-content: center;
   flex-shrink: 0;
 }
+
+.detail-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.icon-btn {
+  border: 1px solid #d8dee9;
+  border-radius: 6px;
+  background: #fff;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #3a4a5c;
+}
+.icon-btn:hover { background: #f0f4fb; }
 
 .queue-item-top {
   display: flex;
