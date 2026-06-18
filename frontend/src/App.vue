@@ -20,6 +20,12 @@ const selectedItem = computed(() =>
 
 const TERMINAL_STATUSES = new Set(["approved", "rejected", "escalated"]);
 
+const stats = computed(() => ({
+  highRisk: items.value.filter(i => i.risk_level === 'high').length,
+  priority: items.value.filter(i => i.customer_tier === 'priority').length,
+  total: items.value.length,
+}));
+
 async function loadItems() {
   isLoading.value = true;
   errorMessage.value = null;
@@ -81,6 +87,20 @@ onMounted(loadItems);
 
     <section v-else class="workspace">
       <aside class="queue-list" aria-label="Review queue">
+        <div class="queue-stats">
+          <div class="stat-card">
+            <span class="stat-number">{{ stats.highRisk }}</span>
+            <span class="stat-label">High risk</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number">{{ stats.priority }}</span>
+            <span class="stat-label">Priority</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number">{{ stats.total }}</span>
+            <span class="stat-label">Total open</span>
+          </div>
+        </div>
         <button
           v-for="item in items"
           :key="item.id"
@@ -160,6 +180,32 @@ onMounted(loadItems);
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.queue-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #eef1f6;
+}
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f5f7fb;
+  border-radius: 6px;
+  padding: 8px 4px;
+}
+.stat-number {
+  font-size: 20px;
+  font-weight: 700;
+  color: #162033;
+}
+.stat-label {
+  font-size: 11px;
+  color: #5c6b7e;
+  margin-top: 2px;
 }
 
 .terminal-notice {
